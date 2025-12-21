@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAppKit } from '@reown/appkit/react';
 import { useAccount } from 'wagmi';
 
 const Header: React.FC = () => {
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   const { address, isConnected } = useAccount();
 
   return (

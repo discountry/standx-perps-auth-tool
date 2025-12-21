@@ -1,53 +1,57 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignMessage, useSwitchChain } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAppKit } from '@reown/appkit/react';
 import { generateEd25519KeyPair, parseJwt } from '../utils/crypto';
 import { StandXService } from '../services/standxService';
 import { StandXCredentials, DecodedSignedData } from '../types';
 import ExportCard from './ExportCard';
 
-const STORAGE_KEY = 'standx:credentials';
+type ErrorLike = {
+  message?: unknown;
+  code?: unknown;
+  name?: unknown;
+};
+
+function isErrorLike(err: unknown): err is ErrorLike {
+  return typeof err === 'object' && err !== null;
+}
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (isErrorLike(err) && typeof err.message === 'string') return err.message;
+  try {
+    return String(err);
+  } catch {
+    return 'Unknown error';
+  }
+}
+
+function isUserRejectedError(err: unknown): boolean {
+  if (!isErrorLike(err)) return false;
+  const code = typeof err.code === 'number' ? err.code : undefined;
+  const name = typeof err.name === 'string' ? err.name : undefined;
+  return code === 4001 || name === 'UserRejectedRequestError';
+}
 
 const AuthTool: React.FC = () => {
   const { address, isConnected, chainId } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { mutateAsync: switchChainAsync } = useSwitchChain();
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<number>(0);
   const [credentials, setCredentials] = useState<StandXCredentials | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored) as StandXCredentials;
-      setCredentials(parsed);
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (credentials) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
-    } else {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [credentials]);
-
   const ensureBscChain = useCallback(
     async (context: 'auto' | 'sign') => {
       if (!isConnected || chainId === 56) return;
       try {
         await switchChainAsync({ chainId: 56 });
-      } catch (err: any) {
-        const rejected = err?.code === 4001 || err?.name === 'UserRejectedRequestError';
+      } catch (err: unknown) {
+        const rejected = isUserRejectedError(err);
         const message = rejected
           ? 'Please approve switching to BSC in your wallet.'
           : 'Failed to switch to BSC. Please switch networks in your wallet.';
@@ -107,13 +111,14 @@ const AuthTool: React.FC = () => {
 
       setCredentials(creds);
       setStep(5);
-    } catch (err: any) {
-      console.error(err);
+    } catch (err: unknown) {
+      // Avoid dumping potentially sensitive objects into console.
+      console.error('Authentication failed:', getErrorMessage(err));
       // Handle user rejection specifically
-      if (err.code === 4001 || err.name === 'UserRejectedRequestError') {
+      if (isUserRejectedError(err)) {
         setError('Signature request was rejected by your wallet.');
       } else {
-        setError(err.message || 'An error occurred during authentication');
+        setError(getErrorMessage(err) || 'An error occurred during authentication');
       }
       setStep(0);
     } finally {

@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { createWeb3Modal } from '@web3modal/wagmi/react';
-import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
+import { createAppKit } from '@reown/appkit/react';
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+import { mainnet, type AppKitNetwork } from '@reown/appkit/networks';
 import { WagmiProvider } from 'wagmi';
-import { bsc, mainnet } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Header from './components/Header';
 import AuthTool from './components/AuthTool';
@@ -11,7 +11,7 @@ import AuthTool from './components/AuthTool';
 // 1. Get projectId from user
 const projectId = 'd5297a7590289eccc377ea0661d80cb2';
 
-// 2. Create wagmiConfig
+// 2. App metadata
 const metadata = {
   name: 'StandX Auth Tool',
   description: 'Export credentials for StandX CLI',
@@ -19,26 +19,41 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-const chains = [bsc, mainnet] as const;
-const config = defaultWagmiConfig({
-  chains,
+// 3. Define networks (BSC is required by StandX Perps)
+const bsc: AppKitNetwork = {
+  id: 56,
+  name: 'BNB Smart Chain',
+  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+  rpcUrls: { default: { http: ['https://bsc-dataseed.binance.org'] } },
+  blockExplorers: { default: { name: 'BscScan', url: 'https://bscscan.com' } }
+};
+
+const networks: [AppKitNetwork, ...AppKitNetwork[]] = [bsc, mainnet];
+
+// 4. Create the Wagmi adapter
+const wagmiAdapter = new WagmiAdapter({
+  networks,
   projectId,
-  metadata,
 });
 
-// 3. Create modal
-createWeb3Modal({
-  wagmiConfig: config,
+// 5. Initialize AppKit (keep outside components to avoid rerenders)
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks,
+  metadata,
   projectId,
-  enableAnalytics: true,
   themeMode: 'dark',
+  // Privacy: analytics are enabled by default in AppKit; keep disabled here.
+  features: {
+    analytics: false
+  }
 });
 
 const queryClient = new QueryClient();
 
 const App: React.FC = () => {
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30">
           <Header />
