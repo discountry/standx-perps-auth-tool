@@ -1,0 +1,6 @@
+
+{
+  "name": "StandX Perps Auth Tool",
+  "description": "A developer tool to generate and export StandX Perps authentication credentials (ED25519 keys and JWT tokens) using browser wallets or WalletConnect QR code scanning.",
+  "requestFramePermissions": []
+}
