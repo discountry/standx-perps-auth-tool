@@ -59,16 +59,18 @@ const ExportCard: React.FC<ExportCardProps> = ({ credentials, onReset }) => {
         </div>
 
         <div className="space-y-6">
-          <CredentialBox 
-            label="ED25519 Private Key (Local Only)" 
-            value={credentials.ed25519PrivateKey} 
+          <CredentialBox
+            label="代理钱包私钥 / Agent Wallet Private Key"
+            envVar="STANDX_REQUEST_PRIVATE_KEY"
+            value={credentials.ed25519PrivateKey}
             isSecret={true}
             onCopy={() => copyToClipboard(credentials.ed25519PrivateKey, 'priv')}
             isCopied={copiedField === 'priv'}
           />
-          <CredentialBox 
-            label="Access Token (JWT)" 
-            value={credentials.accessToken} 
+          <CredentialBox
+            label="访问令牌 / Access Token (JWT)"
+            envVar="STANDX_TOKEN"
+            value={credentials.accessToken}
             onCopy={() => copyToClipboard(credentials.accessToken, 'token')}
             isCopied={copiedField === 'token'}
           />
@@ -119,19 +121,25 @@ const InfoItem: React.FC<{ label: string, value: string }> = ({ label, value }) 
   </div>
 );
 
-const CredentialBox: React.FC<{ 
-  label: string, 
-  value: string, 
-  onCopy: () => void, 
+const CredentialBox: React.FC<{
+  label: string,
+  envVar?: string,
+  value: string,
+  onCopy: () => void,
   isCopied: boolean,
-  isSecret?: boolean 
-}> = ({ label, value, onCopy, isCopied, isSecret }) => {
+  isSecret?: boolean
+}> = ({ label, envVar, value, onCopy, isCopied, isSecret }) => {
   const [show, setShow] = useState(!isSecret);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h5 className="text-slate-500 text-xs font-bold uppercase tracking-widest">{label}</h5>
+        <div>
+          <h5 className="text-slate-500 text-xs font-bold uppercase tracking-widest">{label}</h5>
+          {envVar && (
+            <code className="text-blue-400 text-xs font-mono">{envVar}</code>
+          )}
+        </div>
         <div className="flex gap-3">
           {isSecret && (
             <button 
