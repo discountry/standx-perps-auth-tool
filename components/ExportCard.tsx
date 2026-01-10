@@ -16,6 +16,15 @@ const ExportCard: React.FC<ExportCardProps> = ({ credentials, onReset }) => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // Calculate expiration timestamp: 6.5 days from creation (token valid for 7 days)
+  const calculateExpirationTimestamp = (): string => {
+    const createdAt = new Date(credentials.timestamp);
+    const expirationMs = createdAt.getTime() + 6.5 * 24 * 60 * 60 * 1000;
+    return Math.floor(expirationMs / 1000).toString();
+  };
+
+  const expirationTimestamp = calculateExpirationTimestamp();
+
   const downloadJson = () => {
     const blob = new Blob([JSON.stringify(credentials, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -74,6 +83,14 @@ const ExportCard: React.FC<ExportCardProps> = ({ credentials, onReset }) => {
             onCopy={() => copyToClipboard(credentials.accessToken, 'token')}
             isCopied={copiedField === 'token'}
           />
+          <CredentialBox
+            label="令牌过期时间 / Token Expiration Time"
+            envVar="STANDX_TOKEN_EXPIRY"
+            value={expirationTimestamp}
+            description="Unix 时间戳 (秒)。到达此时间后，Bot 应取消所有挂单并停止交易。/ Unix timestamp (seconds). When reached, bot should cancel all orders and stop trading."
+            onCopy={() => copyToClipboard(expirationTimestamp, 'expiry')}
+            isCopied={copiedField === 'expiry'}
+          />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -125,10 +142,11 @@ const CredentialBox: React.FC<{
   label: string,
   envVar?: string,
   value: string,
+  description?: string,
   onCopy: () => void,
   isCopied: boolean,
   isSecret?: boolean
-}> = ({ label, envVar, value, onCopy, isCopied, isSecret }) => {
+}> = ({ label, envVar, value, description, onCopy, isCopied, isSecret }) => {
   const [show, setShow] = useState(!isSecret);
 
   return (
@@ -138,6 +156,9 @@ const CredentialBox: React.FC<{
           <h5 className="text-slate-500 text-xs font-bold uppercase tracking-widest">{label}</h5>
           {envVar && (
             <code className="text-blue-400 text-xs font-mono">{envVar}</code>
+          )}
+          {description && (
+            <p className="text-slate-500 text-xs mt-1 leading-relaxed">{description}</p>
           )}
         </div>
         <div className="flex gap-3">
